@@ -1,0 +1,1 @@
+{"name":"mailharbor-platform","version":"0.1.0","private":true,"description":"MailHarbor email platform starter","scripts":{"test":"npm --prefix backend test"}}

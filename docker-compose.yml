@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mailharbor
+      POSTGRES_USER: mailharbor
+      POSTGRES_PASSWORD: change-me-local-only
+    ports: ["5432:5432"]
+    volumes:
+      - mailharbor_db:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+  api:
+    build: ./backend
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://mailharbor:change-me-local-only@db:5432/mailharbor
+    ports: ["3000:3000"]
+    depends_on: [db]
+volumes:
+  mailharbor_db:
