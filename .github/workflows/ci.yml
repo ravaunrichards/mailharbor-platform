@@ -9,19 +9,78 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://mailharbor:ci-only-password@127.0.0.1:5432/mailharbor_test
+      DATABASE_SSL: "false"
+      JWT_SECRET: mailharbor-ci-secret-with-more-than-thirty-two-bytes
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: mailharbor
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: mailharbor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mailharbor -d mailharbor_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
       - name: Set up Node.js 24 LTS
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: backend/package.json
+
       - name: Install backend dependencies
         run: npm install --prefix backend --no-audit --no-fund
+
       - name: Syntax-check backend
         run: |
           for file in backend/src/*.js backend/test/*.js; do node --check "$file"; done
-      - name: Run backend tests
+
+      - name: Apply database migrations
+        run: npm --prefix backend run migrate
+
+      - name: Verify PostgreSQL schema
+        working-directory: backend
+        run: |
+          node <<'NODE'
+          const { Client } = require('pg');
+          (async () => {
+            const client = new Client({ connectionString: process.env.DATABASE_URL });
+            await client.connect();
+            try {
+              const result = await client.query(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+              );
+              const actual = new Set(result.rows.map((row) => row.table_name));
+              const expected = [
+                'schema_migrations',
+                'mail_users',
+                'mail_email_verifications',
+                'mail_messages',
+                'mail_outbox',
+                'mail_inbound_events'
+              ];
+              const missing = expected.filter((name) => !actual.has(name));
+              if (missing.length) throw new Error('Missing migrated tables: ' + missing.join(', '));
+              console.log('Verified tables: ' + expected.join(', '));
+            } finally {
+              await client.end();
+            }
+          })().catch((error) => {
+            console.error(error);
+            process.exitCode = 1;
+          });
+          NODE
+
+      - name: Run backend and API tests
         run: npm --prefix backend test
