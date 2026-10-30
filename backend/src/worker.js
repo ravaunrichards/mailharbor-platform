@@ -78,43 +78,65 @@ async function processJob(database, transport, job) {
   }
 }
 
-async function run() {
-  const config = loadConfig();
+function startWorker(options = {}) {
+  const config = options.config || loadConfig();
+  const database = options.db || pool;
+  let stopping = false;
   let transport = null;
-  process.stdout.write('MailHarbor delivery worker started.\n');
-  while (!stopping) {
-    try {
-      if (!config.smtp.configured) {
-        process.stderr.write('SMTP is not configured. Queue is preserved; no messages are marked as sent.\n');
-        await sleep(15000);
-        continue;
+
+  async function loop() {
+    process.stdout.write('MailHarbor delivery loop started.\\n');
+    while (!stopping) {
+      try {
+        if (!config.smtp.configured) {
+          await sleep(15000);
+          continue;
+        }
+        if (!transport) {
+          transport = createTransport(config.smtp);
+          await transport.verify();
+          process.stdout.write('MailHarbor SMTP connection verified.\\n');
+        }
+        const job = await claimJob(database);
+        if (!job) {
+          await sleep(2000);
+          continue;
+        }
+        await processJob(database, transport, job);
+      } catch (error) {
+        process.stderr.write('MailHarbor delivery loop error: ' + error.message + '\\n');
+        if (transport) {
+          transport.close();
+          transport = null;
+        }
+        await sleep(10000);
       }
-      if (!transport) {
-        transport = createTransport(config.smtp);
-        await transport.verify();
-        process.stdout.write('SMTP connection verified.\n');
-      }
-      const job = await claimJob(pool);
-      if (!job) {
-        await sleep(2000);
-        continue;
-      }
-      await processJob(pool, transport, job);
-    } catch (error) {
-      process.stderr.write('MailHarbor worker error: ' + error.message + '\n');
+    }
+  }
+
+  const done = loop();
+  return {
+    close: async () => {
+      stopping = true;
       if (transport) {
         transport.close();
         transport = null;
       }
-      await sleep(10000);
+      await done;
     }
-  }
-  if (transport) transport.close();
-  await pool.end();
+  };
 }
 
-process.on('SIGTERM', () => { stopping = true; });
-process.on('SIGINT', () => { stopping = true; });
+async function run() {
+  const worker = startWorker();
+  const shutdown = async () => {
+    await worker.close();
+    await pool.end();
+    process.exit(0);
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+}
 
 if (require.main === module) {
   run().catch((error) => {
@@ -123,4 +145,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { claimJob, processJob };
+module.exports = { claimJob, processJob, startWorker };
