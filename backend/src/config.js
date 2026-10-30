@@ -24,8 +24,10 @@ function loadConfig(env = process.env) {
   const smtpUser = (env.SMTP_USER || '').trim();
   const smtpPassword = env.SMTP_PASSWORD || '';
   const mailFrom = (env.MAIL_FROM || '').trim();
+  const appBaseUrl = (env.APP_BASE_URL || env.RENDER_EXTERNAL_URL || 'http://localhost:3000').replace(/\\/+$/, '');
   const configuredOrigins = (env.CORS_ORIGINS || '').split(',').map((item) => item.trim()).filter(Boolean);
-  const defaultOrigin = new URL(env.APP_BASE_URL || 'http://localhost:3000').origin;
+  const defaultOrigin = new URL(appBaseUrl).origin;
+  const realtimeUrl = env.REALTIME_PUBLIC_URL || (env.RENDER_EXTERNAL_HOSTNAME ? 'wss://' + env.RENDER_EXTERNAL_HOSTNAME : '');
   const realtimeOrigins = (env.REALTIME_ALLOWED_ORIGINS || env.CORS_ORIGINS || defaultOrigin)
     .split(',').map((item) => item.trim()).filter(Boolean);
 
@@ -39,7 +41,7 @@ function loadConfig(env = process.env) {
     trustProxy: bool(env.TRUST_PROXY, nodeEnv === 'production'),
     appBaseUrl: (env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     corsOrigins: configuredOrigins.length ? configuredOrigins : [defaultOrigin],
-    realtimePublicUrl: normalizeRealtimeUrl(env.REALTIME_PUBLIC_URL, nodeEnv),
+    realtimePublicUrl: normalizeRealtimeUrl(realtimeUrl, nodeEnv),
     realtimeAllowedOrigins: realtimeOrigins,
     inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET || '',
     smtp: {
