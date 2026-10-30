@@ -1,1 +1,24 @@
-{"name":"mailharbor-api","version":"0.1.0","private":true,"main":"src/server.js","scripts":{"start":"node src/server.js","test":"node --test"},"engines":{"node":">=20"},"dependencies":{"express":"^4.21.2","helmet":"^8.0.0"}}
+{
+  "name": "mailharbor-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MailHarbor authenticated mail API and delivery worker",
+  "main": "src/server.js",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "node src/server.js",
+    "worker": "node src/worker.js",
+    "migrate": "node src/migrate.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.10",
+    "pg": "^8.16.3"
+  }
+}

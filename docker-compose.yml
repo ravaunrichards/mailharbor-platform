@@ -1,20 +1,73 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: mailharbor
       POSTGRES_USER: mailharbor
-      POSTGRES_PASSWORD: change-me-local-only
-    ports: ["5432:5432"]
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mailharbor-local-only-change-me}
+    ports:
+      - "5432:5432"
     volumes:
       - mailharbor_db:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mailharbor -d mailharbor"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    restart: unless-stopped
+
   api:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
+      NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgres://mailharbor:change-me-local-only@db:5432/mailharbor
-    ports: ["3000:3000"]
-    depends_on: [db]
+      DATABASE_URL: postgres://mailharbor:${POSTGRES_PASSWORD:-mailharbor-local-only-change-me}@db:5432/mailharbor
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-local-only-change-this-secret-before-deploying}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      TRUST_PROXY: "false"
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["npm", "run", "worker"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://mailharbor:${POSTGRES_PASSWORD:-mailharbor-local-only-change-me}@db:5432/mailharbor
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-local-only-change-this-secret-before-deploying}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   mailharbor_db:

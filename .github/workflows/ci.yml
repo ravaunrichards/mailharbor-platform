@@ -1,0 +1,27 @@
+name: MailHarbor CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package.json
+      - name: Install backend dependencies
+        run: npm install --prefix backend --no-audit --no-fund
+      - name: Syntax-check backend
+        run: |
+          for file in backend/src/*.js backend/test/*.js; do node --check "$file"; done
+      - name: Run backend tests
+        run: npm --prefix backend test

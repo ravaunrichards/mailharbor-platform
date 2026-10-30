@@ -1,1 +1,13 @@
-{"name":"mailharbor-platform","version":"0.1.0","private":true,"description":"MailHarbor email platform starter","scripts":{"test":"npm --prefix backend test"}}
+{
+  "name": "mailharbor-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MailHarbor webmail platform, API, inbound webhook, and SMTP delivery worker",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "start": "npm --prefix backend start",
+    "worker": "npm --prefix backend run worker",
+    "migrate": "npm --prefix backend run migrate",
+    "test": "npm --prefix backend test"
+  }
+}

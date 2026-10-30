@@ -1,8 +1,17 @@
-FROM node:20-alpine
+FROM node:24-alpine
+
+ENV NODE_ENV=production
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --omit=dev
-COPY src ./src
-ENV NODE_ENV=production PORT=3000
+
+COPY backend/package.json ./package.json
+RUN npm install --omit=dev --no-audit --no-fund
+
+COPY backend/src ./src
+COPY database /database
+COPY frontend /frontend
+
+ENV PORT=3000
 EXPOSE 3000
-CMD ["npm","start"]
+
+USER node
+CMD ["npm", "start"]

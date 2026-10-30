@@ -1,1 +1,101 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#173c68"><title>MailHarbor</title><link rel="stylesheet" href="styles.css"></head><body><div class="app"><aside class="sidebar"><div class="brand"><span class="mark">M</span><span>MailHarbor</span></div><button class="compose" id="compose">＋ Compose</button><nav id="folders"><button class="active" data-folder="Inbox">▣ <span>Inbox</span><b>3</b></button><button data-folder="Starred">☆ <span>Starred</span></button><button data-folder="Sent">↗ <span>Sent</span></button><button data-folder="Drafts">▤ <span>Drafts</span></button><button data-folder="Spam">! <span>Spam</span></button><button data-folder="Trash">⌫ <span>Trash</span></button></nav><div class="sidefoot">A calmer place for your mail.</div></aside><main><header><button id="menu" class="iconbtn" aria-label="Menu">☰</button><div class="search">⌕ <input id="search" placeholder="Search mail" aria-label="Search mail"></div><div class="avatar">Y</div></header><section class="content"><div class="heading"><div><small>YOUR MAIL</small><h1 id="heading">Inbox</h1><p>Everything important, gathered in one place.</p></div><button id="refresh" class="iconbtn" aria-label="Refresh">↻</button></div><div class="toolbar"><button id="markread">Mark read</button><button id="archive">Archive</button><button id="delete">Delete</button><span id="count"></span></div><div id="messages" class="messages"></div><p class="preview-note">Preview mode · Sample messages only · Sending is not configured</p></section></main></div><dialog id="composer"><form method="dialog" id="composeform"><div class="modalhead"><b>New message</b><button class="iconbtn" value="cancel" aria-label="Close">×</button></div><label>To<input type="email" id="to" placeholder="name@example.com" required></label><label>Subject<input id="subject" placeholder="Subject"></label><label>Message<textarea id="body" rows="7" placeholder="Write your message…"></textarea></label><div class="modalfoot"><span id="draftstatus">Local preview only</span><button class="send" type="submit">Save draft</button></div></form></dialog><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173c68">
+  <meta name="description" content="MailHarbor — a secure home for your email.">
+  <title>MailHarbor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="auth-shell" class="auth-shell">
+    <section class="auth-card">
+      <a class="brand auth-brand" href="/" aria-label="MailHarbor home">
+        <span class="mark">M</span><span>MailHarbor</span>
+      </a>
+      <p class="eyebrow">YOUR MAIL, IN GOOD HANDS</p>
+      <h1 id="auth-title">Welcome back</h1>
+      <p class="auth-copy" id="auth-copy">Sign in to open your mailbox.</p>
+      <form id="auth-form">
+        <label id="name-field" class="field is-hidden">Display name
+          <input id="display-name" name="displayName" autocomplete="name" maxlength="120" placeholder="Your name">
+        </label>
+        <label class="field">Email address
+          <input id="auth-email" name="email" type="email" autocomplete="username" maxlength="254" required placeholder="you@example.com">
+        </label>
+        <label class="field">Password
+          <input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128" required placeholder="At least 12 characters">
+        </label>
+        <button class="primary full-width" id="auth-submit" type="submit">Sign in</button>
+      </form>
+      <p class="auth-switch"><span id="mode-copy">New to MailHarbor?</span> <button id="mode-toggle" type="button">Create an account</button></p>
+      <p id="auth-feedback" class="feedback" role="status" aria-live="polite"></p>
+      <p id="auth-capability" class="capability-note">Checking MailHarbor services…</p>
+    </section>
+    <footer class="auth-footer">MailHarbor · Secure mailbox services</footer>
+  </main>
+
+  <div class="app is-hidden" id="mail-app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="/" aria-label="MailHarbor home">
+        <span class="mark">M</span><span>MailHarbor</span>
+      </a>
+      <button class="compose" id="compose" type="button">＋ Compose</button>
+      <nav id="folders" aria-label="Mailbox folders">
+        <button class="active" data-folder="inbox" type="button"><span class="nav-icon">▣</span><span>Inbox</span></button>
+        <button data-folder="starred" type="button"><span class="nav-icon">☆</span><span>Starred</span></button>
+        <button data-folder="sent" type="button"><span class="nav-icon">↗</span><span>Sent</span></button>
+        <button data-folder="spam" type="button"><span class="nav-icon">!</span><span>Spam</span></button>
+        <button data-folder="trash" type="button"><span class="nav-icon">⌫</span><span>Trash</span></button>
+        <button data-folder="archive" type="button"><span class="nav-icon">▤</span><span>Archive</span></button>
+      </nav>
+      <div class="sidefoot">Private mail. Clear control.</div>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <button id="menu" class="iconbtn mobile-menu" type="button" aria-label="Open navigation">☰</button>
+        <div class="search">⌕ <input id="search" type="search" placeholder="Search your mail" aria-label="Search your mail"></div>
+        <div class="account-area"><span id="signed-email"></span><button id="signout" class="signout" type="button">Sign out</button></div>
+      </header>
+      <section class="content">
+        <div id="service-banner" class="service-banner is-hidden" role="status"></div>
+        <div class="heading">
+          <div><small>YOUR MAILBOX</small><h1 id="heading">Inbox</h1><p id="subheading">Your mail, all in one place.</p></div>
+          <button id="refresh" class="iconbtn refresh" type="button" aria-label="Refresh mailbox">↻</button>
+        </div>
+        <div class="toolbar">
+          <button id="markread" type="button">Mark read</button>
+          <button id="archive" type="button">Archive</button>
+          <button id="delete" type="button">Move to trash</button>
+          <span id="count">0 messages</span>
+        </div>
+        <div id="messages" class="messages" aria-live="polite"></div>
+        <p class="footnote">Message status reflects the mail provider response. Queued messages are not yet sent.</p>
+      </section>
+    </section>
+  </div>
+
+  <dialog id="composer" class="dialog">
+    <form id="compose-form">
+      <div class="modalhead"><div><b>New message</b><p>Send through your configured MailHarbor provider.</p></div><button class="iconbtn" id="close-compose" type="button" aria-label="Close">×</button></div>
+      <label class="field">To<input id="to" type="text" required placeholder="name@example.com"></label>
+      <label class="field">Cc <span class="optional">(optional)</span><input id="cc" type="text" placeholder="name@example.com"></label>
+      <label class="field">Bcc <span class="optional">(optional)</span><input id="bcc" type="text" placeholder="name@example.com"></label>
+      <label class="field">Subject<input id="subject" type="text" maxlength="998" placeholder="Subject"></label>
+      <label class="field">Message<textarea id="body" rows="8" maxlength="100000" required placeholder="Write your message…"></textarea></label>
+      <div class="modalfoot"><span id="compose-feedback" class="feedback" role="status"></span><button class="primary" id="send" type="submit">Send message</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="message-view" class="dialog message-dialog">
+    <div class="modalhead"><div><b id="detail-subject">Message</b><p id="detail-date"></p></div><button class="iconbtn" id="close-detail" type="button" aria-label="Close">×</button></div>
+    <div class="detail-meta"><div><strong>From</strong><span id="detail-from"></span></div><div><strong>To</strong><span id="detail-to"></span></div><div><strong>Status</strong><span id="detail-status"></span></div></div>
+    <pre id="detail-body" class="detail-body"></pre>
+    <p id="detail-error" class="detail-error is-hidden"></p>
+  </dialog>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
