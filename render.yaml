@@ -40,7 +40,7 @@ services:
         fromService:
           type: web
           name: mailharbor-realtime
-          property: host
+          envVarKey: RENDER_EXTERNAL_HOSTNAME
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -76,7 +76,10 @@ services:
           name: mailharbor-db
           property: connectionString
       - key: REALTIME_ALLOWED_ORIGINS
-        sync: false
+        fromService:
+          type: web
+          name: mailharbor-api
+          envVarKey: RENDER_EXTERNAL_URL
 
   - type: worker
     name: mailharbor-delivery-worker

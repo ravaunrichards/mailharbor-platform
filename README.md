@@ -7,7 +7,7 @@ MailHarbor is a webmail application with a PostgreSQL-backed API, verified accou
 - **Web/API service:** serves the mailbox UI and authenticated REST API.
 - **Delivery worker:** claims outbox jobs from PostgreSQL, sends through the configured SMTP provider, records provider message IDs, and retries transient failures.
 - **Realtime service:** maintains authenticated WebSocket connections and broadcasts mailbox-change notifications from PostgreSQL without exposing message content.
-- **PostgreSQL:** stores accounts, verification tokens, messages, inbound webhook deduplication, and the transactional outbox.
+- **PostgreSQL:** stores accounts, verification tokens, messages, inbound webhook deduplication, one-use realtime tickets, and the transactional outbox.
 - **Inbound provider adapter:** accepts normalized inbound messages only when their raw request body has a valid HMAC signature.
 
 The frontend no longer includes sample messages. A new account can only be created when outbound SMTP is configured, because MailHarbor must send and verify the account email. A message is shown as queued until the worker receives an actual successful SMTP response.
@@ -19,7 +19,7 @@ Requirements: Node.js 24 LTS, npm, and Docker Compose.
 1. Copy \`.env.example\` to \`.env\`.
 2. Set a strong \`JWT_SECRET\` (for example, \`openssl rand -hex 32\`).
 3. Set the SMTP values from a real, verified mail-delivery provider. Leave them blank only when exercising health checks and the UI; registration and sending will remain disabled.
-4. Start PostgreSQL, API, and worker:
+4. Start PostgreSQL, API, realtime service, and delivery worker:
 
 \`\`\`sh
 docker compose up --build
@@ -37,6 +37,7 @@ npm --prefix backend test
 - \`GET /health/live\` — process liveness.
 - \`GET /health/ready\` — database readiness and configured mail capabilities.
 - \`GET /api/status\` — public capability status. It does not reveal secrets.
+- \`POST /api/realtime/ticket\` — create a 60-second, one-use ticket for an authenticated WebSocket connection.
 - \`POST /api/auth/register\` — create an account and queue email verification.
 - \`POST /api/auth/verify\` — consume a one-time verification token.
 - \`POST /api/auth/login\` and \`GET /api/me\` — authenticated access.
@@ -57,4 +58,4 @@ This repository implements account verification, mailbox persistence, plain-text
 
 ## Production checklist
 
-Before making the service public, configure a verified sending domain, SMTP credentials, inbound routing, HTTPS, database backups, provider rate limits, abuse monitoring, and operational alerts. The Render Blueprint declares a web/API service, a background delivery worker, and PostgreSQL. Review the selected resource plans and complete the provider secrets in Render before syncing or deploying it.
+Before making the service public, configure a verified sending domain, SMTP credentials, inbound routing, HTTPS, database backups, provider rate limits, abuse monitoring, and operational alerts. The Render Blueprint declares the web/API, realtime WebSocket, delivery-worker, and PostgreSQL services. Review the selected resource plans and complete the provider secrets in Render before syncing or deploying it.

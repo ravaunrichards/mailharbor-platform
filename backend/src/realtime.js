@@ -176,6 +176,7 @@ function createRealtimeService(options = {}) {
           if (!stopping) process.stderr.write('MailHarbor realtime listener error: ' + error.message + '\n');
           wake();
         });
+        client.on('end', () => wake());
         await client.connect();
         await client.query('LISTEN mailharbor_mail_events');
         listenerClient = client;
