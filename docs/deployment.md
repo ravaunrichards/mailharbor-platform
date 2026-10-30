@@ -19,6 +19,8 @@ The API and worker must receive the same database and SMTP configuration. Only t
 
 ## Release sequence
 
+The Blueprint creates an additional paid starter web service for realtime delivery. Review its plan before syncing. The API issues one-use tickets; do not configure a second JWT secret on the realtime service.
+
 1. Create the PostgreSQL and service resources from the reviewed Blueprint.
 2. Wait for PostgreSQL to become available.
 3. Set SMTP and sender-domain credentials on both services.

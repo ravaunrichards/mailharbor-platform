@@ -68,7 +68,8 @@ jobs:
                 'mail_email_verifications',
                 'mail_messages',
                 'mail_outbox',
-                'mail_inbound_events'
+                'mail_inbound_events',
+                'mail_realtime_tickets'
               ];
               const missing = expected.filter((name) => !actual.has(name));
               if (missing.length) throw new Error('Missing migrated tables: ' + missing.join(', '));

@@ -21,6 +21,8 @@ const config = {
   trustProxy: false,
   appBaseUrl: 'http://127.0.0.1',
   corsOrigins: ['http://127.0.0.1'],
+  realtimePublicUrl: 'ws://127.0.0.1:3001',
+  realtimeAllowedOrigins: ['http://127.0.0.1'],
   inboundWebhookSecret: '',
   smtp: {
     host: '', port: 587, secure: false, user: '', password: '', from: '', configured: false
@@ -93,6 +95,19 @@ test('public status does not claim mail sending is enabled', async () => {
   assert.equal(response.status, 200);
   assert.equal(data.outboundEmailConfigured, false);
   assert.equal(data.registrationAvailable, false);
+});
+
+test('issues a short-lived one-use realtime ticket to an authenticated mailbox owner', async () => {
+  queries.length = 0;
+  const { response, data } = await api('/api/realtime/ticket', { method: 'POST', auth: true, body: {} });
+  assert.equal(response.status, 201);
+  assert.match(data.ticket, /^[a-f0-9]{64}$/);
+  assert.equal(data.expiresInSeconds, 60);
+  const ticketInsert = queries.find((entry) => entry.sql.includes('INSERT INTO mail_realtime_tickets'));
+  assert.ok(ticketInsert);
+  assert.equal(ticketInsert.values[0], 7);
+  assert.equal(ticketInsert.values[1].length, 64);
+  assert.notEqual(ticketInsert.values[1], data.ticket);
 });
 
 test('protects mailbox routes from unauthenticated callers', async () => {

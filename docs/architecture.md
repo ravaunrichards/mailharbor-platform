@@ -13,12 +13,17 @@
 
 | Service | Responsibility | Required dependencies |
 |---|---|---|
-| mailharbor-api | UI, auth, mailbox API, health checks, webhook ingress | PostgreSQL |
+| mailharbor-api | UI, account/auth API, mailbox API, health checks, webhook ingress, realtime-ticket issuer | PostgreSQL |
+| mailharbor-realtime | Authenticated WebSocket sessions and mailbox-change fan-out from PostgreSQL notifications | PostgreSQL, one-time API-issued connection tickets |
 | mailharbor-delivery-worker | SMTP delivery, retry scheduling, outbox recovery | PostgreSQL, SMTP provider |
 | PostgreSQL | Accounts, verification tokens, messages, outbox and webhook idempotency | Persistent storage |
 | Mail provider | Outbound SMTP and inbound routing | Verified domain, provider credentials and DNS |
 
 The transactional outbox avoids losing a send request between saving a message and scheduling its delivery. The API does not claim that a queued message is sent. Worker retries use exponential backoff with a five-attempt default; final failures remain visible on the message record.
+
+## Realtime mailbox events
+
+The API issues a random 256-bit ticket stored only as a SHA-256 hash and valid for 60 seconds. The browser presents it as its first WebSocket message. The realtime service atomically consumes the ticket, binding the socket to one account; replayed, expired, or invalid tickets are rejected. PostgreSQL triggers publish only the account ID, message ID, and operation through `NOTIFY`; message bodies, addresses, subjects, and tokens are never broadcast. If the realtime process disconnects, clients reconnect and reload their mailbox through the authenticated API.
 
 ## Security boundaries
 

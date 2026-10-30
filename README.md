@@ -6,6 +6,7 @@ MailHarbor is a webmail application with a PostgreSQL-backed API, verified accou
 
 - **Web/API service:** serves the mailbox UI and authenticated REST API.
 - **Delivery worker:** claims outbox jobs from PostgreSQL, sends through the configured SMTP provider, records provider message IDs, and retries transient failures.
+- **Realtime service:** maintains authenticated WebSocket connections and broadcasts mailbox-change notifications from PostgreSQL without exposing message content.
 - **PostgreSQL:** stores accounts, verification tokens, messages, inbound webhook deduplication, and the transactional outbox.
 - **Inbound provider adapter:** accepts normalized inbound messages only when their raw request body has a valid HMAC signature.
 
