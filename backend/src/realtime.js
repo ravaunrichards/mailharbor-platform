@@ -27,7 +27,8 @@ function createRealtimeService(options = {}) {
   let listenerClient = null;
   let stopListener = null;
 
-  const server = http.createServer(async (req, res) => {
+  const ownsServer = !options.server;
+  const server = options.server || http.createServer(async (req, res) => {
     const pathname = new URL(req.url || '/', 'http://localhost').pathname;
     if (req.method === 'GET' && pathname === '/health/live') {
       return json(res, 200, { status: 'ok', service: 'mailharbor-realtime' });
@@ -205,7 +206,7 @@ function createRealtimeService(options = {}) {
       try { ws.terminate(); } catch (_error) {}
     }
     await new Promise((resolve) => wss.close(() => resolve()));
-    if (server.listening) await new Promise((resolve) => server.close(() => resolve()));
+    if (ownsServer && server.listening) await new Promise((resolve) => server.close(() => resolve()));
     if (!options.db) await db.end();
   }
 
@@ -219,7 +220,7 @@ function createRealtimeService(options = {}) {
     });
   }
 
-  return { server, wss, listen, listenToDatabase, close };
+  return { server, wss, listen, listenToDatabase, close, get isReady() { return listenerConnected; } };
 }
 
 async function start() {
