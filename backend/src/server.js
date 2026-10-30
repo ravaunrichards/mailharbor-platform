@@ -202,7 +202,7 @@ function createApp(options = {}) {
     const where = ['owner_id = $1'];
     if (folder === 'starred') {
       where.push('is_starred = true');
-      where.push(\"folder <> 'trash'\");
+      where.push("folder <> 'trash'");
     } else {
       values.push(folder);
       where.push('folder = $' + values.length);
@@ -284,7 +284,7 @@ function createApp(options = {}) {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid message identifier.' });
     const result = await db.query(
-      \"UPDATE mail_messages SET folder = 'trash' WHERE id = $1 AND owner_id = $2 RETURNING id\",
+      "UPDATE mail_messages SET folder = 'trash' WHERE id = $1 AND owner_id = $2 RETURNING id",
       [id, req.user.id]
     );
     if (!result.rowCount) return res.status(404).json({ error: 'Message not found.' });
