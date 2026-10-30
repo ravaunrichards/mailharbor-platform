@@ -35,6 +35,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
       INBOUND_WEBHOOK_SECRET: ${INBOUND_WEBHOOK_SECRET:-}
+      REALTIME_PUBLIC_URL: ${REALTIME_PUBLIC_URL:-ws://localhost:3001}
     ports:
       - "3000:3000"
     depends_on:
@@ -46,6 +47,24 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
+
+  realtime:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["npm", "run", "realtime"]
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgres://mailharbor:${POSTGRES_PASSWORD:-mailharbor-local-only-change-me}@db:5432/mailharbor
+      DATABASE_SSL: "false"
+      REALTIME_ALLOWED_ORIGINS: ${REALTIME_ALLOWED_ORIGINS:-http://localhost:3000}
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   worker:

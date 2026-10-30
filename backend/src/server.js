@@ -83,6 +83,8 @@ function createApp(options = {}) {
       service: 'MailHarbor',
       outboundEmailConfigured: config.smtp.configured,
       inboundEmailConfigured: Boolean(config.inboundWebhookSecret),
+      realtimeConfigured: Boolean(config.realtimePublicUrl),
+      realtimeUrl: config.realtimePublicUrl,
       registrationAvailable: config.smtp.configured,
       deliveryNote: config.smtp.configured
         ? 'Outbound messages are queued for the MailHarbor delivery worker.'
@@ -188,6 +190,19 @@ function createApp(options = {}) {
     if (!result.rowCount) return res.status(401).json({ error: 'Account is no longer available.' });
     const user = result.rows[0];
     return res.json({ user: { id: user.id, email: user.email, displayName: user.display_name, emailVerifiedAt: user.email_verified_at, createdAt: user.created_at } });
+  }));
+
+  app.post('/api/realtime/ticket', auth, asyncRoute(async (req, res) => {
+    if (!config.realtimePublicUrl) {
+      return res.status(503).json({ error: 'Realtime mailbox updates are not configured.' });
+    }
+    const ticket = crypto.randomBytes(32).toString('hex');
+    await db.query(
+      `INSERT INTO mail_realtime_tickets(owner_id, token_hash, expires_at)
+       VALUES ($1, $2, now() + interval '60 seconds')`,
+      [req.user.id, sha256(ticket)]
+    );
+    return res.status(201).json({ ticket, expiresInSeconds: 60 });
   }));
 
   app.get('/api/messages', auth, asyncRoute(async (req, res) => {

@@ -5,6 +5,14 @@ function bool(value, fallback) {
   return String(value).toLowerCase() === 'true';
 }
 
+function normalizeRealtimeUrl(value, nodeEnv) {
+  const raw = String(value || '').trim();
+  if (!raw) return nodeEnv === 'production' ? '' : 'ws://localhost:3001';
+  if (/^wss?:\/\//i.test(raw)) return raw.replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(raw)) return raw.replace(/^http/i, 'ws').replace(/\/+$/, '');
+  return 'wss://' + raw.replace(/^\/+|\/+$/g, '');
+}
+
 function loadConfig(env = process.env) {
   const nodeEnv = env.NODE_ENV || 'development';
   const jwtSecret = env.JWT_SECRET || (nodeEnv === 'production' ? '' : 'local-only-change-this-secret-before-deploying');
@@ -18,6 +26,8 @@ function loadConfig(env = process.env) {
   const mailFrom = (env.MAIL_FROM || '').trim();
   const configuredOrigins = (env.CORS_ORIGINS || '').split(',').map((item) => item.trim()).filter(Boolean);
   const defaultOrigin = new URL(env.APP_BASE_URL || 'http://localhost:3000').origin;
+  const realtimeOrigins = (env.REALTIME_ALLOWED_ORIGINS || env.CORS_ORIGINS || defaultOrigin)
+    .split(',').map((item) => item.trim()).filter(Boolean);
 
   return {
     nodeEnv,
@@ -29,6 +39,8 @@ function loadConfig(env = process.env) {
     trustProxy: bool(env.TRUST_PROXY, nodeEnv === 'production'),
     appBaseUrl: (env.APP_BASE_URL || 'http://localhost:3000').replace(/\/+$/, ''),
     corsOrigins: configuredOrigins.length ? configuredOrigins : [defaultOrigin],
+    realtimePublicUrl: normalizeRealtimeUrl(env.REALTIME_PUBLIC_URL, nodeEnv),
+    realtimeAllowedOrigins: realtimeOrigins,
     inboundWebhookSecret: env.INBOUND_WEBHOOK_SECRET || '',
     smtp: {
       host: smtpHost,

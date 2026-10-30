@@ -10,6 +10,11 @@ let selected = new Set();
 let mailStatus = { outboundEmailConfigured: false, inboundEmailConfigured: false };
 let authMode = 'login';
 let searchTimer = null;
+let realtimeSocket = null;
+let realtimeReconnectTimer = null;
+let realtimeRetryDelay = 1000;
+let realtimeStopped = true;
+let realtimeRefreshTimer = null;
 
 const folderNames = {
   inbox: 'Inbox',
@@ -76,6 +81,7 @@ function updateCapabilityText() {
 }
 
 function showAuth() {
+  stopRealtime();
   $('auth-shell').classList.remove('is-hidden');
   $('mail-app').classList.add('is-hidden');
 }
@@ -84,6 +90,63 @@ function showMailbox() {
   $('auth-shell').classList.add('is-hidden');
   $('mail-app').classList.remove('is-hidden');
   $('signed-email').textContent = currentUser.email;
+  if (mailStatus.realtimeUrl) {
+    realtimeStopped = false;
+    connectRealtime();
+  }
+}
+
+function scheduleRealtimeReconnect() {
+  if (realtimeStopped || !token || !mailStatus.realtimeUrl || realtimeReconnectTimer) return;
+  const delay = realtimeRetryDelay;
+  realtimeRetryDelay = Math.min(30000, realtimeRetryDelay * 2);
+  realtimeReconnectTimer = setTimeout(() => {
+    realtimeReconnectTimer = null;
+    connectRealtime();
+  }, delay);
+}
+
+async function connectRealtime() {
+  if (realtimeStopped || !token || !mailStatus.realtimeUrl || realtimeSocket) return;
+  try {
+    const auth = await request('/realtime/ticket', { method: 'POST', body: {} });
+    if (realtimeStopped || !token) return;
+    const socket = new WebSocket(mailStatus.realtimeUrl);
+    realtimeSocket = socket;
+    socket.addEventListener('open', () => {
+      if (realtimeSocket === socket) socket.send(JSON.stringify({ type: 'authenticate', ticket: auth.ticket }));
+    });
+    socket.addEventListener('message', (event) => {
+      let message;
+      try { message = JSON.parse(event.data); } catch (_error) { return; }
+      if (message.type === 'ready') {
+        realtimeRetryDelay = 1000;
+      } else if (message.type === 'mail.message.changed' && !realtimeStopped) {
+        clearTimeout(realtimeRefreshTimer);
+        realtimeRefreshTimer = setTimeout(() => loadMessages().catch(() => {}), 120);
+      }
+    });
+    socket.addEventListener('close', () => {
+      if (realtimeSocket === socket) realtimeSocket = null;
+      scheduleRealtimeReconnect();
+    });
+    socket.addEventListener('error', () => socket.close());
+  } catch (_error) {
+    scheduleRealtimeReconnect();
+  }
+}
+
+function stopRealtime() {
+  realtimeStopped = true;
+  clearTimeout(realtimeReconnectTimer);
+  clearTimeout(realtimeRefreshTimer);
+  realtimeReconnectTimer = null;
+  realtimeRefreshTimer = null;
+  if (realtimeSocket) {
+    const socket = realtimeSocket;
+    realtimeSocket = null;
+    try { socket.close(1000, 'Signed out'); } catch (_error) {}
+  }
 }
 
 async function loadMessages() {
@@ -337,6 +400,7 @@ $('compose-form').addEventListener('submit', async (event) => {
 });
 
 $('signout').addEventListener('click', () => {
+  stopRealtime();
   token = '';
   currentUser = null;
   sessionStorage.removeItem('mailharbor-token');
