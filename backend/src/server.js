@@ -396,16 +396,16 @@ async function start() {
     });
   });
 
-  process.stdout.write('MailHarbor unified platform listening on port ' + config.port + '\\n');
-  process.stdout.write('API, mailbox, realtime WebSocket, and delivery loop share one service.\\n');
-  process.stdout.write('Outbound SMTP configured: ' + String(config.smtp.configured) + '\\n');
+  process.stdout.write('MailHarbor unified platform listening on port ' + config.port + '\n');
+  process.stdout.write('API, mailbox, realtime WebSocket, and delivery loop share one service.\n');
+  process.stdout.write('Outbound SMTP configured: ' + String(config.smtp.configured) + '\n');
   void realtimeService.listenToDatabase();
 
   let shuttingDown = false;
   const shutdown = async () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    process.stdout.write('MailHarbor shutting down gracefully.\\n');
+    process.stdout.write('MailHarbor shutting down gracefully.\n');
     await realtimeService.close();
     await worker.close();
     await new Promise((resolve) => server.close(() => resolve()));
