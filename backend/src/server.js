@@ -124,8 +124,8 @@ function createApp(options = {}) {
         [userId, tokenHash]
       );
       await client.query(
-        \`INSERT INTO mail_outbox(owner_id, message_id, sender_email, recipients, subject, body_text)
-         VALUES ($1, NULL, $2, $3::jsonb, $4, $5)\`,
+        `INSERT INTO mail_outbox(owner_id, message_id, sender_email, recipients, subject, body_text)
+         VALUES ($1, NULL, $2, $3::jsonb, $4, $5)`,
         [userId, config.smtp.from, JSON.stringify({ to: [email], cc: [], bcc: [] }), 'Confirm your MailHarbor email address', emailBody]
       );
       await client.query('COMMIT');
@@ -143,7 +143,7 @@ function createApp(options = {}) {
     const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
     if (!/^[a-f0-9]{64}$/i.test(token)) return res.status(400).json({ error: 'Verification link is invalid or expired.' });
     const result = await db.query(
-      \`WITH consumed AS (
+      `WITH consumed AS (
          UPDATE mail_email_verifications
          SET consumed_at = now()
          WHERE token_hash = $1 AND consumed_at IS NULL AND expires_at > now()
@@ -153,7 +153,7 @@ function createApp(options = {}) {
        SET email_verified_at = COALESCE(users.email_verified_at, now())
        FROM consumed
        WHERE users.id = consumed.user_id
-       RETURNING users.id\`,
+       RETURNING users.id`,
       [sha256(token)]
     );
     if (!result.rowCount) return res.status(400).json({ error: 'Verification link is invalid, expired, or already used.' });
@@ -243,15 +243,15 @@ function createApp(options = {}) {
     try {
       await client.query('BEGIN');
       const inserted = await client.query(
-        \`INSERT INTO mail_messages(owner_id, sender_email, reply_to, recipients, subject, body_text, folder, delivery_status)
+        `INSERT INTO mail_messages(owner_id, sender_email, reply_to, recipients, subject, body_text, folder, delivery_status)
          VALUES ($1, $2, $3, $4::jsonb, $5, $6, 'sent', 'queued')
-         RETURNING id, delivery_status, created_at\`,
+         RETURNING id, delivery_status, created_at`,
         [req.user.id, config.smtp.from, req.user.email, JSON.stringify({ to, cc, bcc }), subject, body]
       );
       const message = inserted.rows[0];
       await client.query(
-        \`INSERT INTO mail_outbox(owner_id, message_id, sender_email, reply_to, recipients, subject, body_text)
-         VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)\`,
+        `INSERT INTO mail_outbox(owner_id, message_id, sender_email, reply_to, recipients, subject, body_text)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7)`,
         [req.user.id, message.id, config.smtp.from, req.user.email, JSON.stringify({ to, cc, bcc }), subject, body]
       );
       await client.query('COMMIT');
@@ -320,9 +320,9 @@ function createApp(options = {}) {
       );
       for (const owner of owners.rows) {
         await client.query(
-          \`INSERT INTO mail_messages(owner_id, sender_email, recipients, subject, body_text, folder, delivery_status, provider_message_id, sent_at)
+          `INSERT INTO mail_messages(owner_id, sender_email, recipients, subject, body_text, folder, delivery_status, provider_message_id, sent_at)
            VALUES ($1, $2, $3::jsonb, $4, $5, 'inbox', 'received', $6, now())
-           ON CONFLICT (owner_id, provider_message_id) WHERE provider_message_id IS NOT NULL DO NOTHING\`,
+           ON CONFLICT (owner_id, provider_message_id) WHERE provider_message_id IS NOT NULL DO NOTHING`,
           [owner.id, message.from, JSON.stringify({ to: message.to, cc: [], bcc: [] }), message.subject, message.text, message.messageId]
         );
       }
