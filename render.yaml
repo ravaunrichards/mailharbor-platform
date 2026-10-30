@@ -76,10 +76,7 @@ services:
           name: mailharbor-db
           property: connectionString
       - key: REALTIME_ALLOWED_ORIGINS
-        fromService:
-          type: web
-          name: mailharbor-api
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false
 
   - type: worker
     name: mailharbor-delivery-worker

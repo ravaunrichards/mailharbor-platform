@@ -196,9 +196,7 @@ function createApp(options = {}) {
     if (!config.realtimePublicUrl) {
       return res.status(503).json({ error: 'Realtime mailbox updates are not configured.' });
     }
-    await db.query("DELETE FROM mail_realtime_tickets WHERE expires_at < now() OR consumed_at < now() - interval '1 day'");
     const ticket = crypto.randomBytes(32).toString('hex');
-    res.set('Cache-Control', 'no-store');
     await db.query(
       `INSERT INTO mail_realtime_tickets(owner_id, token_hash, expires_at)
        VALUES ($1, $2, now() + interval '60 seconds')`,
