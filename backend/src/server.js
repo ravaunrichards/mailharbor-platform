@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const http = require('node:http');
 const path = require('node:path');
 const bcrypt = require('bcryptjs');
 const express = require('express');
@@ -10,6 +11,8 @@ const rateLimit = require('express-rate-limit');
 const { loadConfig } = require('./config');
 const { pool } = require('./db');
 const { migrate } = require('./migrate');
+const { createRealtimeService } = require('./realtime');
+const { startWorker } = require('./worker');
 const { issueAccessToken, requireAuth } = require('./security');
 const {
   normalizeEmail,
@@ -74,7 +77,9 @@ function createApp(options = {}) {
       service: 'mailharbor-api',
       database: 'connected',
       outboundEmailConfigured: config.smtp.configured,
-      inboundEmailConfigured: Boolean(config.inboundWebhookSecret)
+      inboundEmailConfigured: Boolean(config.inboundWebhookSecret),
+      postgresNotifications: options.realtime ? options.realtime.isReady : false,
+      deliveryLoop: 'running-in-process'
     });
   }));
 
@@ -87,7 +92,7 @@ function createApp(options = {}) {
       realtimeUrl: config.realtimePublicUrl,
       registrationAvailable: config.smtp.configured,
       deliveryNote: config.smtp.configured
-        ? 'Outbound messages are queued for the MailHarbor delivery worker.'
+        ? 'Outbound messages are queued for the MailHarbor delivery loop running in this application service.'
         : 'Outbound delivery is disabled until a verified SMTP provider is configured.'
     });
   });
@@ -371,19 +376,43 @@ function createApp(options = {}) {
 async function start() {
   const config = loadConfig();
   await migrate(pool);
-  const app = createApp({ config, db: pool });
-  const server = app.listen(config.port, () => {
-    process.stdout.write('MailHarbor API listening on port ' + config.port + '\n');
-    process.stdout.write('Outbound SMTP configured: ' + String(config.smtp.configured) + '\n');
+
+  const runtime = { realtime: null };
+  const app = createApp({
+    config,
+    db: pool,
+    get realtime() { return runtime.realtime; }
   });
-  const shutdown = async () => {
-    server.close(async () => {
-      await pool.end();
-      process.exit(0);
+  const server = http.createServer(app);
+  const realtimeService = createRealtimeService({ config, db: pool, server });
+  runtime.realtime = realtimeService;
+  const worker = startWorker({ config, db: pool });
+
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(config.port, () => {
+      server.removeListener('error', reject);
+      resolve();
     });
+  });
+
+  process.stdout.write('MailHarbor unified platform listening on port ' + config.port + '\\n');
+  process.stdout.write('API, mailbox, realtime WebSocket, and delivery loop share one service.\\n');
+  process.stdout.write('Outbound SMTP configured: ' + String(config.smtp.configured) + '\\n');
+  void realtimeService.listenToDatabase();
+
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    process.stdout.write('MailHarbor shutting down gracefully.\\n');
+    await realtimeService.close();
+    await worker.close();
+    await new Promise((resolve) => server.close(() => resolve()));
+    await pool.end();
   };
-  process.on('SIGTERM', shutdown);
-  process.on('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 }
 
 if (require.main === module) {
