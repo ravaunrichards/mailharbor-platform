@@ -9,7 +9,7 @@ let stopping = false;
 
 async function claimJob(database) {
   const result = await database.query(
-    \`WITH candidate AS (
+    `WITH candidate AS (
        SELECT id
        FROM mail_outbox
        WHERE (status = 'queued' AND next_attempt_at <= now())
@@ -22,7 +22,7 @@ async function claimJob(database) {
      SET status = 'processing', attempts = job.attempts + 1, locked_at = now(), updated_at = now()
      FROM candidate
      WHERE job.id = candidate.id
-     RETURNING job.*\`
+     RETURNING job.*`
   );
   return result.rows[0] || null;
 }
@@ -41,17 +41,17 @@ async function processJob(database, transport, job) {
       headers: { 'X-MailHarbor-Outbox-ID': String(job.id) }
     });
     await database.query(
-      \`UPDATE mail_outbox
+      `UPDATE mail_outbox
        SET status = 'sent', sent_at = now(), locked_at = NULL, last_error = NULL,
            provider_message_id = $2, updated_at = now()
-       WHERE id = $1\`,
+       WHERE id = $1`,
       [job.id, sent.messageId || null]
     );
     if (job.message_id) {
       await database.query(
-        \`UPDATE mail_messages
+        `UPDATE mail_messages
          SET delivery_status = 'sent', sent_at = now(), last_error = NULL
-         WHERE id = $1\`,
+         WHERE id = $1`,
         [job.message_id]
       );
     }
@@ -61,11 +61,11 @@ async function processJob(database, transport, job) {
     const delayMs = Math.min(3600000, 1000 * (2 ** Math.min(Number(job.attempts), 10)));
     const safeError = String(error.message || 'SMTP delivery failed').slice(0, 1000);
     await database.query(
-      \`UPDATE mail_outbox
+      `UPDATE mail_outbox
        SET status = $2, locked_at = NULL, last_error = $3,
            next_attempt_at = CASE WHEN $2 = 'queued' THEN now() + ($4 * interval '1 millisecond') ELSE next_attempt_at END,
            updated_at = now()
-       WHERE id = $1\`,
+       WHERE id = $1`,
       [job.id, finalAttempt ? 'failed' : 'queued', safeError, delayMs]
     );
     if (job.message_id) {
