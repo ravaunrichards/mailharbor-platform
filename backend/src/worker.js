@@ -5,7 +5,6 @@ const { pool } = require('./db');
 const { createTransport } = require('./mailer');
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-let stopping = false;
 
 async function claimJob(database) {
   const result = await database.query(
@@ -85,7 +84,7 @@ function startWorker(options = {}) {
   let transport = null;
 
   async function loop() {
-    process.stdout.write('MailHarbor delivery loop started.\\n');
+    process.stdout.write('MailHarbor delivery loop started.\n');
     while (!stopping) {
       try {
         if (!config.smtp.configured) {
@@ -95,7 +94,7 @@ function startWorker(options = {}) {
         if (!transport) {
           transport = createTransport(config.smtp);
           await transport.verify();
-          process.stdout.write('MailHarbor SMTP connection verified.\\n');
+          process.stdout.write('MailHarbor SMTP connection verified.\n');
         }
         const job = await claimJob(database);
         if (!job) {
@@ -104,7 +103,7 @@ function startWorker(options = {}) {
         }
         await processJob(database, transport, job);
       } catch (error) {
-        process.stderr.write('MailHarbor delivery loop error: ' + error.message + '\\n');
+        process.stderr.write('MailHarbor delivery loop error: ' + error.message + '\n');
         if (transport) {
           transport.close();
           transport = null;
